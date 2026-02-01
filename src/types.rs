@@ -1,0 +1,10 @@
+use poise::serenity_prelude as serenity;
+use sqlx::SqlitePool;
+
+pub struct Data {
+    pub db: SqlitePool,
+}
+
+pub type Error = Box<dyn std::error::Error + Send + Sync>;
+
+pub type Context<'a> = poise::Context<'a, Data, Error>;

@@ -112,7 +112,7 @@ async fn handle_select(ctx: &Context<'_>, query: &str) -> Result<String, sqlx::E
     result.pop();
     result.push('\n');
 
-    for row in rows.iter().take(30) {
+    for row in rows.iter().take(30) { // limit against chat flood
         for (i, _) in columns.iter().enumerate() {
             let cell_value = match row.try_get::<String, _>(i) {
                 Ok(s) => s,

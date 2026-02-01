@@ -5,13 +5,17 @@ use std::sync::Arc;
 use poise::futures_util::lock::Mutex;
 
 mod commands;
+mod helpers;
 
 mod types;
 mod time_parse;
+mod reminders;
 
 use types::{Context, Data, Error};
 use crate::commands::all_commands;
+use crate::helpers::reminder::ReminderStore;
 
+use crate::helpers::reminder_task::reminder_task;
 
 async fn on_error(error: poise::FrameworkError<'_, Data, Error>)
 {
@@ -67,6 +71,8 @@ async fn main() -> Result<(), Error> {
 
     let pool = SqlitePool::connect(&db_url).await?;
 
+    let http_client = Arc::new(serenity::Http::new(&token));
+
     let intents =
         serenity::GatewayIntents::GUILD_MESSAGES
             | serenity::GatewayIntents::MESSAGE_CONTENT
@@ -116,12 +122,31 @@ async fn main() -> Result<(), Error> {
         })
         .setup(move |_ctx, _ready, _framework| {
             let pool = pool.clone();
+            let http_client = Arc::clone(&http_client);
 
             Box::pin(async move {
-                Ok(Data {
-                    db: pool,
+                let reminders = ReminderStore::new(pool.clone());
+
+                let data = Data {
+                    db: pool.clone(),
                     last_command_success: Arc::new(Mutex::new(true)),
-                })
+                    reminders: reminders.clone(),
+                    http_client: Arc::clone(&http_client),
+
+                };
+
+                let task_data = Data {
+                    db: pool,
+                    last_command_success: Arc::new(Default::default()),
+                    reminders,
+                    http_client,
+                };
+
+                tokio::spawn(async move {
+                    reminder_task(Arc::from(task_data)).await;
+                });
+
+                Ok(data)
             })
         })
         .build();
@@ -129,6 +154,8 @@ async fn main() -> Result<(), Error> {
     let mut client = serenity::Client::builder(token, intents)
         .framework(framework)
         .await?;
+
+
 
     client.start().await?;
 

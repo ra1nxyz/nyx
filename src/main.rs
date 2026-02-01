@@ -41,7 +41,6 @@ async fn main() -> Result<(), Error> {
         })
         .build();
 
-    // Serenity client
     let mut client = serenity::Client::builder(token, intents)
         .framework(framework)
         .await?;

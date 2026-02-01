@@ -5,12 +5,12 @@ use std::sync::Arc;
 use poise::futures_util::lock::Mutex;
 
 mod commands;
+
 mod types;
 mod time_parse;
 
 use types::{Context, Data, Error};
-use crate::commands::moderation;
-use crate::commands::moderation::all_commands;
+use crate::commands::all_commands;
 
 
 async fn on_error(error: poise::FrameworkError<'_, Data, Error>)

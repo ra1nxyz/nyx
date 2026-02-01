@@ -5,27 +5,30 @@ use serenity::framework::standard::macros::group;
 use serenity::prelude::TypeMapKey;
 
 use crate::time_parse::{ParsedDuration, TimeParseError};
-
-
-
 pub(crate) use crate::types::{Context, Data, Error};
 
+pub(crate) const BOT_OWNER_ID: serenity::UserId = serenity::UserId::new(1434739350993768630);
 
-
-const BOT_OWNER_ID: serenity::UserId = serenity::UserId::new(1434739350993768630);
-const MODERATOR_ROLE_ID: serenity::RoleId = serenity::RoleId::new(1308891968004292618);
-
-
-
-
+// refactor later to run query and cache instead of multiple queries, yayayaya
 pub async fn is_moderator(ctx: &Context<'_>) -> bool {
     let author_id = ctx.author().id;
     if author_id == BOT_OWNER_ID {
         return true;
     }
 
+    let is_user_elevated = sqlx::query("SELECT 1 FROM moderator_users WHERE user_id = ?")
+        .bind(author_id.to_string())
+        .fetch_optional(&ctx.data().db)
+        .await
+        .map(|row| row.is_some())
+        .unwrap_or(false);
+
+    if is_user_elevated {
+        return true;
+    }
+
     let guild_id = match ctx.guild_id() {
-        Some(g) => g,
+        Some(gid) => gid,
         None => return false,
     };
 
@@ -34,12 +37,23 @@ pub async fn is_moderator(ctx: &Context<'_>) -> bool {
         Err(_) => return false,
     };
 
-    member.roles.contains(&MODERATOR_ROLE_ID)
+    for role_id in &member.roles {
+        let is_privilged_role = sqlx::query("SELECT role_id FROM moderator_roles WHERE role_id = ?")
+        .bind(role_id.to_string())
+            .fetch_optional(&ctx.data().db)
+        .await
+        .map(|row| row.is_some())
+        .unwrap_or(false);
 
+        if is_privilged_role {
+            return true;
+        }
+    }
+    return false;
 }
 
 
-async fn mod_check(ctx: poise::Context<'_, Data, Error>) -> Result<bool, Error> {
+pub async fn mod_check(ctx: poise::Context<'_, Data, Error>) -> Result<bool, Error> {
     if is_moderator(&ctx).await {
         return Ok(true);
     }

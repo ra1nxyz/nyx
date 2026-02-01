@@ -10,6 +10,7 @@ dependencies = [
  "dotenv",
  "humantime",
  "poise",
+ "rand 0.9.2",
  "regex",
  "serenity",
  "sqlx",

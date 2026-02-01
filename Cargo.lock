@@ -10,8 +10,10 @@ dependencies = [
  "dotenv",
  "humantime",
  "poise",
+ "regex",
  "serenity",
  "sqlx",
+ "thiserror 2.0.18",
  "tokio",
 ]
 

@@ -17,6 +17,8 @@ use crate::helpers::reminder::ReminderStore;
 
 use crate::helpers::reminder_task::reminder_task;
 
+// split this whole file later down the line
+
 async fn on_error(error: poise::FrameworkError<'_, Data, Error>)
 {
     if let Some(ctx) = error.ctx() {

@@ -70,7 +70,6 @@ impl ParsedDuration {
     }
 }
 
-// Convenience function
 pub fn parse_duration(input: &str) -> Result<Duration, TimeParseError> {
     let parsed = ParsedDuration::new(input)?;
     Ok(parsed.duration)

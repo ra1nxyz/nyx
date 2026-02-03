@@ -1,7 +1,7 @@
 use chrono::{DateTime, NaiveDateTime, Utc};
 use sqlx::{SqlitePool, Error, Row};
 
-use crate::reminders::Reminder;
+use crate::structs::reminders::Reminder;
 
 #[derive(Clone)]
 pub struct ReminderStore {
@@ -9,6 +9,8 @@ pub struct ReminderStore {
 }
 
 
+
+// was gonna refactor to use timeparse.rs but i realise i cba to do all that rn :wilted_rose:
 impl ReminderStore {
     pub fn new(pool: SqlitePool) -> Self {
         Self { pool }

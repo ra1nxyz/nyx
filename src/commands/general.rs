@@ -5,7 +5,7 @@ use rand::seq::{IndexedRandom, SliceRandom};
 use rand::rng;
 
 use crate::commands::moderation::mod_check;
-use crate::time_parse::ParsedDuration;
+use crate::structs::time_parse::ParsedDuration;
 
 pub fn all_commands() -> Vec<poise::Command<Data, Error>> {
     vec![
@@ -63,7 +63,7 @@ pub async fn remind(
         _ => {""}.parse()?
     };
 
-    let remind = crate::reminders::Reminder::new(
+    let remind = crate::structs::reminders::Reminder::new(
         ctx.author().id.to_string(),
         remind_at,
         message.to_string(),

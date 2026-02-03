@@ -3,27 +3,31 @@ use sqlx::SqlitePool;
 use std::env;
 use std::sync::Arc;
 use poise::futures_util::lock::Mutex;
+use serenity::all::FullEvent;
 
 mod commands;
 mod helpers;
 
 mod types;
-mod time_parse;
-mod reminders;
-
+mod structs;
 use types::{Context, Data, Error};
-use crate::commands::all_commands;
-use crate::helpers::reminder::ReminderStore;
 
+use crate::commands::all_commands;
+use crate::helpers::starboard;
+use crate::helpers::reminder::ReminderStore;
 use crate::helpers::reminder_task::reminder_task;
+use crate::helpers::starboard::Database;
+
+use crate::helpers::starboard_manager::{
+    handle_reaction_add,
+    handle_reaction_remove,
+    handle_reaction_remove_all
+};
 
 // split this whole file later down the line
 
 async fn on_error(error: poise::FrameworkError<'_, Data, Error>)
 {
-    if let Some(ctx) = error.ctx() {
-        *ctx.data().last_command_success.lock().await = false;
-    }
 
     match &error {
         poise::FrameworkError::Setup { error, ..} => panic!("Failed to start bot: {}", error),
@@ -60,6 +64,28 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>)
             }
         }
     }
+
+}
+
+async fn event_handler(
+    ctx: &serenity::Context,
+    event: &FullEvent,
+    _framework: poise::FrameworkContext<'_, Data, Error>,
+    data: &Data,
+) -> Result<(), Error> {
+    match event {
+        FullEvent::ReactionAdd { add_reaction} => {
+            handle_reaction_add(ctx, add_reaction, data).await?;
+        }
+        FullEvent::ReactionRemove { removed_reaction} => {
+            handle_reaction_remove(ctx, removed_reaction, data).await?;
+        }
+        FullEvent::ReactionRemoveAll {channel_id, removed_from_message_id} => {
+            handle_reaction_remove_all(ctx, *channel_id, *removed_from_message_id, data).await?;
+        }
+        _ => {}
+    }
+    Ok(())
 }
 
 
@@ -78,11 +104,15 @@ async fn main() -> Result<(), Error> {
     let intents =
         serenity::GatewayIntents::GUILD_MESSAGES
             | serenity::GatewayIntents::MESSAGE_CONTENT
-            | serenity::GatewayIntents::GUILD_MEMBERS;
+            | serenity::GatewayIntents::GUILD_MEMBERS
+            | serenity::GatewayIntents::GUILD_MESSAGE_REACTIONS;
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: all_commands(),
+            event_handler: |ctx, event, framework, data| {
+                Box::pin(event_handler(ctx, event, framework, data))
+            },
             prefix_options: poise::PrefixFrameworkOptions {
                 prefix: Some("n".into()),
                 ..Default::default()
@@ -90,6 +120,7 @@ async fn main() -> Result<(), Error> {
             pre_command: |ctx| {
                 Box::pin(async move {
                     let data = ctx.data();
+                    println!("{}", *data.last_command_success.lock().await);
                     *data.last_command_success.lock().await = true;
                 })
             },
@@ -128,12 +159,15 @@ async fn main() -> Result<(), Error> {
 
             Box::pin(async move {
                 let reminders = ReminderStore::new(pool.clone());
+                let starboard = Database::new(&db_url).await?;
 
                 let data = Data {
                     db: pool.clone(),
-                    last_command_success: Arc::new(Mutex::new(true)),
+                    last_command_success: Arc::from(Mutex::new(true)),
                     reminders: reminders.clone(),
                     http_client: Arc::clone(&http_client),
+                    starboard: starboard.clone(),
+                    starboard_lock: Mutex::new(()),
 
                 };
 
@@ -142,6 +176,8 @@ async fn main() -> Result<(), Error> {
                     last_command_success: Arc::new(Default::default()),
                     reminders,
                     http_client,
+                    starboard,
+                    starboard_lock: Mutex::new(()),
                 };
 
                 tokio::spawn(async move {

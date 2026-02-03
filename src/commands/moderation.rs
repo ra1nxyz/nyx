@@ -1,10 +1,6 @@
 use poise::serenity_prelude as serenity;
-use sqlx::SqlitePool;
-use chrono::{Utc, Duration};
-use serenity::framework::standard::macros::group;
-use serenity::prelude::TypeMapKey;
-
-use crate::time_parse::{ParsedDuration, TimeParseError};
+use sqlx::{Row, SqlitePool};
+use crate::structs::time_parse::{ParsedDuration, TimeParseError};
 pub(crate) use crate::types::{Context, Data, Error};
 
 pub(crate) const BOT_OWNER_ID: serenity::UserId = serenity::UserId::new(1434739350993768630);
@@ -39,11 +35,11 @@ pub async fn is_moderator(ctx: &Context<'_>) -> bool {
 
     for role_id in &member.roles {
         let is_privilged_role = sqlx::query("SELECT role_id FROM moderator_roles WHERE role_id = ?")
-        .bind(role_id.to_string())
+            .bind(role_id.to_string())
             .fetch_optional(&ctx.data().db)
-        .await
-        .map(|row| row.is_some())
-        .unwrap_or(false);
+            .await
+            .map(|row| row.is_some())
+            .unwrap_or(false);
 
         if is_privilged_role {
             return true;
@@ -112,6 +108,7 @@ pub async fn timeout(
     user: serenity::User,
     duration_str: String,
 ) -> Result<(), crate::Error> {
+
     let parsed_duration = match ParsedDuration::new(&duration_str) {
         Ok(d) => d,
         Err(e) => {
@@ -129,6 +126,8 @@ pub async fn timeout(
     let mut member = guild.member(&ctx.http(), user.id).await?;
 
     let until = parsed_duration.until_datetime();
+
+    println!("test");
 
     member
         .edit(ctx.http(), serenity::EditMember::new()

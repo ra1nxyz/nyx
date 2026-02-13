@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use poise::CreateReply;
 pub(crate) use crate::types::{Context, Data, Error};
 
@@ -55,7 +56,6 @@ pub async fn remind(
         .map_err(|e| format!("Could not parse when: {:?}", e))?;
 
     let remind_at = parsed.until_datetime();
-    println!("test");
 
     let context  = match ctx {
         poise::Context::Prefix(ctx) => {
@@ -73,8 +73,16 @@ pub async fn remind(
 
     let reminder_id = ctx.data().reminders.add_reminder(&remind).await?;
 
+    let until_datetime = || -> chrono::DateTime<Utc> {
+        Utc::now() + parsed.duration
+    };
+
+    fn to_discord_timestamp(dt: DateTime<Utc>) -> String {
+        format!("<t:{}:F>", dt.timestamp())
+    }
+
     ctx.send(CreateReply::default()
-        .content(format!("Reminder ID #{} set for {}", reminder_id, parsed.human_readable())
+        .content(format!("Reminder ID #{} set for {}", reminder_id, to_discord_timestamp(until_datetime()))
         ).reply(true)
     ).await?;
 

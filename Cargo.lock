@@ -7,6 +7,7 @@ name = "Bot"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "hex_color",
  "poise",
  "rand 0.9.2",
  "regex",
@@ -719,6 +720,15 @@ name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+
+[[package]]
+name = "hex_color"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d37f101bf4c633f7ca2e4b5e136050314503dd198e78e325ea602c327c484ef0"
+dependencies = [
+ "rand 0.8.5",
+]
 
 [[package]]
 name = "hkdf"

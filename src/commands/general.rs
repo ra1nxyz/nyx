@@ -47,14 +47,15 @@ pub async fn choose(
 #[poise::command(slash_command, prefix_command)]
 pub async fn remind(
     ctx: Context<'_>,
-    when: String,
-    #[rest]
     message: String,
+    #[rest]
+    when: String,
 ) -> Result<(), Error> {
     let parsed = ParsedDuration::new(&when)
         .map_err(|e| format!("Could not parse when: {:?}", e))?;
 
     let remind_at = parsed.until_datetime();
+    println!("test");
 
     let context  = match ctx {
         poise::Context::Prefix(ctx) => {

@@ -68,7 +68,7 @@ pub async fn rcstatus(
         .color(0x800080)
         .field(
             "Feature Status",
-            if is_enabled { "✅ **Enabled**" } else { "❌ **Disabled**" },
+            if is_enabled { "**Enabled**" } else { "**Disabled**" },
             false
         )
         .footer(serenity::CreateEmbedFooter::new(format!("Server ID: {}", guild_id)));

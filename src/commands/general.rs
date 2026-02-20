@@ -1,10 +1,11 @@
+use poise::serenity_prelude as serenity;
 use chrono::{DateTime, Utc};
 use poise::CreateReply;
 pub(crate) use crate::types::{Context, Data, Error};
 
 use rand::seq::{IndexedRandom, SliceRandom};
 use rand::rng;
-
+use serenity::{};
 use crate::commands::moderation::mod_check;
 use crate::structs::time_parse::ParsedDuration;
 
@@ -13,7 +14,8 @@ pub fn all_commands() -> Vec<poise::Command<Data, Error>> {
         say(),
         choose(),
         remind(),
-        // add more here
+        avatar(),
+        banner(),
     ]
 }
 
@@ -42,6 +44,29 @@ pub async fn choose(
     }
     let choice = all_options.choose(&mut rng()).unwrap();
     ctx.say(format!("{}", choice)).await?;
+    Ok(())
+}
+
+#[poise::command(slash_command, prefix_command, aliases("av", "pfp"))]
+pub async fn avatar(
+    ctx: Context<'_>,
+    user: serenity::User,
+) -> Result<(), Error> {
+    if let Some(avatar_url) = user.avatar_url() {
+        ctx.say(avatar_url).await?;
+    }
+
+    Ok(())
+}
+
+#[poise::command(slash_command, prefix_command)]
+pub async fn banner(
+    ctx: Context<'_>,
+    user: serenity::User,
+) -> Result<(), Error> {
+    if let Some(banner_url) = user.banner_url() {
+        ctx.say(banner_url).await?;
+    }
     Ok(())
 }
 

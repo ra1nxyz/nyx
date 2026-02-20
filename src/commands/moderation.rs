@@ -5,7 +5,7 @@ pub(crate) use crate::types::{Context, Data, Error};
 
 pub(crate) const BOT_OWNER_ID: serenity::UserId = serenity::UserId::new(1434739350993768630);
 
-// refactor later to run query and cache instead of multiple queries, yayayaya
+// refactor later to run query and cache instead of multiple queries, yayayaya, this might never be happening LOOOL
 pub async fn is_moderator(ctx: &Context<'_>) -> bool {
     let author_id = ctx.author().id;
     if author_id == BOT_OWNER_ID {
@@ -72,7 +72,6 @@ pub fn all_commands() -> Vec<poise::Command<Data, Error>> {
         unban(),
         timeout(),
         warn(),
-        // add more here
     ]
 }
 

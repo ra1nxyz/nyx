@@ -32,9 +32,10 @@ pub async fn exec(
         "select" | "pragma" | "explain" => {
             match handle_select(&ctx, &query).await {
                 Ok(response) => {
+                    let file = serenity::CreateAttachment::bytes(response.into_bytes(), "result.txt");
                     ctx.send(CreateReply::default()
-                        .content(format!("Query result\n```\n{}\n```", response))
-                        .reply(true)).await?;
+                                 .attachment(file)
+                    ).await?;
                 }
                 Err(err) => {
                     ctx.say(format!("Exec failed: {}", err)).await?;

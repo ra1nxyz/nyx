@@ -19,6 +19,7 @@ use crate::helpers::reminder::ReminderStore;
 use crate::helpers::reminder_task::reminder_task;
 use crate::helpers::starboard::Database;
 
+
 use crate::helpers::starboard_manager::{
     handle_reaction_add,
     handle_reaction_remove,
@@ -162,7 +163,9 @@ async fn main() -> Result<(), Error> {
                 let reminders = ReminderStore::new(pool.clone());
                 let starboard = Database::new(&db_url).await?;
                 let auth = Arc::new(AuthDatabase::new(pool.clone()));
-                auth.create_tables().await?; // the more i put into the data pool the more concerning
+                auth.create_tables().await?;
+                helpers::role_colours::init_role_colour_table(&pool).await?;
+                // the more i put into the data pool the more concerning
                 // it seems ngl
 
                 let data = Data {

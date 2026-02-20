@@ -73,9 +73,9 @@ pub async fn banner(
 #[poise::command(slash_command, prefix_command)]
 pub async fn remind(
     ctx: Context<'_>,
-    message: String,
-    #[rest]
     when: String,
+    #[rest]
+    message: String,
 ) -> Result<(), Error> {
     let parsed = ParsedDuration::new(&when)
         .map_err(|e| format!("Could not parse when: {:?}", e))?;

@@ -7,7 +7,7 @@ edition = "2024"
 serenity = "0.12"
 tokio = { version = "1.21.2", features = ["macros", "rt-multi-thread"] }
 chrono = "0.4"
-sqlx = { version = "0.8.6", features = ["sqlite", "runtime-tokio-rustls", "macros"] }
+sqlx = { version = "0.8.6", features = ["sqlite", "runtime-tokio-rustls", "macros", "chrono"] }
 poise = "0.6.1"
 regex = "1.12.2"
 thiserror = "2.0.18"

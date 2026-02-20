@@ -11,6 +11,7 @@ pub struct Data {
     pub starboard: crate::helpers::starboard::Database,
     pub starboard_lock: Mutex<()>,
     pub http_client: Arc<serenity::Http>,
+    pub auth: Arc<crate::helpers::auth::AuthDatabase>
 }
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;

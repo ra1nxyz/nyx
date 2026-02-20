@@ -13,6 +13,7 @@ mod structs;
 use types::{Context, Data, Error};
 
 use crate::commands::all_commands;
+use crate::helpers::auth::AuthDatabase;
 use crate::helpers::starboard;
 use crate::helpers::reminder::ReminderStore;
 use crate::helpers::reminder_task::reminder_task;
@@ -160,6 +161,9 @@ async fn main() -> Result<(), Error> {
             Box::pin(async move {
                 let reminders = ReminderStore::new(pool.clone());
                 let starboard = Database::new(&db_url).await?;
+                let auth = Arc::new(AuthDatabase::new(pool.clone()));
+                auth.create_tables().await?; // the more i put into the data pool the more concerning
+                // it seems ngl
 
                 let data = Data {
                     db: pool.clone(),
@@ -168,6 +172,7 @@ async fn main() -> Result<(), Error> {
                     http_client: Arc::clone(&http_client),
                     starboard: starboard.clone(),
                     starboard_lock: Mutex::new(()),
+                    auth: auth.clone(),
 
                 };
 
@@ -178,6 +183,7 @@ async fn main() -> Result<(), Error> {
                     http_client,
                     starboard,
                     starboard_lock: Mutex::new(()),
+                    auth,
                 };
 
                 tokio::spawn(async move {

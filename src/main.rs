@@ -116,7 +116,7 @@ async fn main() -> Result<(), Error> {
                 Box::pin(event_handler(ctx, event, framework, data))
             },
             prefix_options: poise::PrefixFrameworkOptions {
-                prefix: Some("n".into()),
+                prefix: Some("!n".into()),
                 ..Default::default()
             },
             pre_command: |ctx| {

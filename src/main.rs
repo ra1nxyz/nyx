@@ -165,6 +165,10 @@ async fn main() -> Result<(), Error> {
                 let auth = Arc::new(AuthDatabase::new(pool.clone()));
                 auth.create_tables().await?;
                 helpers::role_colours::init_role_colour_table(&pool).await?;
+
+                sqlx::query("PRAGMA journal_mode = WAL;").execute(&pool).await?;
+                sqlx::query("PRAGMA synchronous = NORMAL;").execute(&pool).await?;
+
                 // the more i put into the data pool the more concerning
                 // it seems ngl
 
@@ -189,9 +193,12 @@ async fn main() -> Result<(), Error> {
                     auth,
                 };
 
+
                 tokio::spawn(async move {
                     reminder_task(Arc::from(task_data)).await;
                 });
+
+
 
                 Ok(data)
             })

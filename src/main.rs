@@ -5,8 +5,13 @@ use std::sync::Arc;
 use poise::futures_util::lock::Mutex;
 use serenity::all::FullEvent;
 
+use tracing::{info, error, warn};
+use tracing_subscriber;
+
+
 mod commands;
 mod helpers;
+mod tasks;
 
 mod types;
 mod structs;
@@ -16,7 +21,9 @@ use crate::commands::all_commands;
 use crate::helpers::auth::AuthDatabase;
 use crate::helpers::starboard;
 use crate::helpers::reminder::ReminderStore;
-use crate::helpers::reminder_task::reminder_task;
+use crate::tasks::reminder_task::reminder_task;
+use crate::tasks::rep_calc::reputation_task;
+use crate::helpers::reputation::ReputationEngine;
 use crate::helpers::starboard::Database;
 
 
@@ -78,12 +85,20 @@ async fn event_handler(
     match event {
         FullEvent::ReactionAdd { add_reaction} => {
             handle_reaction_add(ctx, add_reaction, data).await?;
+            if let Err(e) = helpers::reputation_manager::handle_reaction(ctx, add_reaction, data).await {
+                eprintln!("Error handling reaction add: {}", e);
+            }
         }
         FullEvent::ReactionRemove { removed_reaction} => {
             handle_reaction_remove(ctx, removed_reaction, data).await?;
         }
         FullEvent::ReactionRemoveAll {channel_id, removed_from_message_id} => {
             handle_reaction_remove_all(ctx, *channel_id, *removed_from_message_id, data).await?;
+        }
+        FullEvent::Message { new_message } => {
+            if let Err(e) = helpers::reputation_manager::handle_message(ctx, new_message, data).await {
+                eprintln!("Error handling reputation: {}", e);
+            }
         }
         _ => {}
     }
@@ -93,6 +108,14 @@ async fn event_handler(
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    tracing_subscriber::fmt()
+        .with_target(true)
+        .with_thread_ids(true)
+        .with_file(true)
+        .with_line_number(true)
+        .init(); // this logging thing is sick
+
+
     let token = env::var("DISCORD_TOKEN")
         .expect("Missing DISCORD_TOKEN");
 
@@ -102,6 +125,7 @@ async fn main() -> Result<(), Error> {
     let pool = SqlitePool::connect(&db_url).await?;
 
     let http_client = Arc::new(serenity::Http::new(&token));
+
 
     let intents =
         serenity::GatewayIntents::GUILD_MESSAGES
@@ -158,6 +182,7 @@ async fn main() -> Result<(), Error> {
         .setup(move |_ctx, _ready, _framework| {
             let pool = pool.clone();
             let http_client = Arc::clone(&http_client);
+            let cache = _ctx.cache.clone();
 
             Box::pin(async move {
                 let reminders = ReminderStore::new(pool.clone());
@@ -165,9 +190,14 @@ async fn main() -> Result<(), Error> {
                 let auth = Arc::new(AuthDatabase::new(pool.clone()));
                 auth.create_tables().await?;
                 helpers::role_colours::init_role_colour_table(&pool).await?;
+                let reputation = ReputationEngine::new(pool.clone());
+                // .with_weights(InteractionWeights { reaction: mention: ..default whatever just for show
+                // for custom weights stuff
 
                 sqlx::query("PRAGMA journal_mode = WAL;").execute(&pool).await?;
                 sqlx::query("PRAGMA synchronous = NORMAL;").execute(&pool).await?;
+
+
 
                 // the more i put into the data pool the more concerning
                 // it seems ngl
@@ -180,10 +210,12 @@ async fn main() -> Result<(), Error> {
                     starboard: starboard.clone(),
                     starboard_lock: Mutex::new(()),
                     auth: auth.clone(),
+                    reputation: reputation.clone(),
+                    cache: cache.clone(),
 
                 };
 
-                let task_data = Data {
+                let task_data = Arc::new(Data {
                     db: pool,
                     last_command_success: Arc::new(Default::default()),
                     reminders,
@@ -191,11 +223,18 @@ async fn main() -> Result<(), Error> {
                     starboard,
                     starboard_lock: Mutex::new(()),
                     auth,
-                };
+                    reputation,
+                    cache,
+                });
 
-
+                let remind_data = Arc::clone(&task_data);
                 tokio::spawn(async move {
-                    reminder_task(Arc::from(task_data)).await;
+                    reminder_task(Arc::from(remind_data)).await;
+                });
+
+                let rep_data = Arc::clone(&task_data);
+                tokio::spawn(async move {
+                    reputation_task(Arc::clone(&rep_data)).await;
                 });
 
 

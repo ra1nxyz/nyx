@@ -427,7 +427,7 @@ async fn authlist(
         let embed = serenity::CreateEmbed::default()
             .title("Authenticated Users")
             .description("No users have been authenticated yet.")
-            .color(0xFFA500);
+            .color(0x00FF00);
 
         ctx.send(poise::CreateReply::default().embed(embed)).await?;
         return Ok(());

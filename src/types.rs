@@ -1,7 +1,9 @@
 use std::sync::Arc;
 use poise::futures_util::lock::Mutex;
 use poise::serenity_prelude as serenity;
+use serenity::all::Cache;
 use sqlx::SqlitePool;
+use crate::helpers::reputation::ReputationEngine;
 
 
 #[derive(Debug, sqlx::FromRow)]
@@ -25,7 +27,9 @@ pub struct Data {
     pub starboard: crate::helpers::starboard::Database,
     pub starboard_lock: Mutex<()>,
     pub http_client: Arc<serenity::Http>,
-    pub auth: Arc<crate::helpers::auth::AuthDatabase>
+    pub auth: Arc<crate::helpers::auth::AuthDatabase>,
+    pub reputation: ReputationEngine,
+    pub cache: Arc<Cache>,
 }
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;

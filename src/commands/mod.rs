@@ -3,6 +3,7 @@ pub mod moderation;
 mod management;
 
 mod fun;
+mod datasci;
 
 use crate::types::{Context, Data, Error};
 use poise::Command;
@@ -14,6 +15,7 @@ pub fn all_commands() -> Vec<Command<Data, Error>> {
     commands.extend(general::all_commands());
     commands.extend(management::all_commands());
     commands.extend(fun::all_commands());
+    commands.extend(datasci::all_commands());
 
 
 

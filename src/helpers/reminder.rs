@@ -17,7 +17,7 @@ impl ReminderStore {
     }
 
     pub async fn add_reminder(&self, reminder: &Reminder) -> Result<i64, Error> {
-        let convertformat = reminder.remind_at.format("%Y-%m-%d %H:%M:%S").to_string();
+        let convert_format = reminder.remind_at.format("%Y-%m-%d %H:%M:%S").to_string();
 
         let query = sqlx::query(
             r#"INSERT INTO reminders (user_id, context_message_url, remind_at, reminder_message)
@@ -25,7 +25,7 @@ impl ReminderStore {
         )
             .bind(&reminder.user_id)
             .bind(&reminder.context_message_url)
-            .bind(&convertformat)
+            .bind(&convert_format)
             .bind(&reminder.reminder_message)
             .execute(&self.pool)
             .await?;
@@ -34,7 +34,7 @@ impl ReminderStore {
     }
 
     pub async fn get_dues(&self) -> Result<Vec<Reminder>, Error> {
-        let convertformat = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
+        let convert_format = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
 
         let rows = sqlx::query(
             r#"SELECT * FROM reminders
@@ -43,7 +43,7 @@ impl ReminderStore {
             ORDER BY remind_at
             "#,
         )
-            .bind(&convertformat)
+            .bind(&convert_format)
             .fetch_all(&self.pool)
             .await?;
 

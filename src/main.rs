@@ -107,7 +107,8 @@ async fn main() -> Result<(), Error> {
         serenity::GatewayIntents::GUILD_MESSAGES
             | serenity::GatewayIntents::MESSAGE_CONTENT
             | serenity::GatewayIntents::GUILD_MEMBERS
-            | serenity::GatewayIntents::GUILD_MESSAGE_REACTIONS;
+            | serenity::GatewayIntents::GUILD_MESSAGE_REACTIONS
+            | serenity::GatewayIntents::DIRECT_MESSAGES;
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {

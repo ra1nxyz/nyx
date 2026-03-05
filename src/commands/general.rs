@@ -70,7 +70,7 @@ pub async fn banner(
     Ok(())
 }
 
-#[poise::command(slash_command, prefix_command)]
+#[poise::command(slash_command, prefix_command, dm_only = false)]
 pub async fn remind(
     ctx: Context<'_>,
     when: String,

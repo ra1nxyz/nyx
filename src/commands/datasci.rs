@@ -3,7 +3,6 @@ use serenity::all::{Colour, CreateEmbed, CreateEmbedFooter};
 use crate::types::{Context, Data, Error};
 use serenity::UserId;
 use tracing::info;
-use crate::helpers::reputation::ReputationEngine;
 
 pub fn all_commands() -> Vec<poise::Command<Data, Error>> {
     vec![

@@ -33,6 +33,10 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>)
 
     match &error {
         poise::FrameworkError::Setup { error, ..} => panic!("Failed to start bot: {}", error),
+        poise::FrameworkError::NotAnOwner { ctx, .. } => {
+            let message = format!("{} is not in the sudoers file. This incident will be reported.", ctx.author().name);
+            let _ = ctx.say(message).await;
+        }
         poise::FrameworkError::Command { ctx, error, .. } |
         poise::FrameworkError::ArgumentParse { ctx, error, .. } => {
             println!("Command failed: `{}`: {:?}", ctx.command().name, error);

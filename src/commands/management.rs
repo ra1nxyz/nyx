@@ -1,3 +1,5 @@
+use std::process::Stdio;
+use tokio::process::Command;
 use crate::structs::auth::*;
 use poise::serenity_prelude::Mentionable;
 use poise::CreateReply;
@@ -18,6 +20,7 @@ pub fn all_commands() -> Vec<poise::Command<Data, Error>> {
         authdisable(),
         authremove(),
         authenticate(),
+        dispatch(),
     ]
 }
 
@@ -457,4 +460,56 @@ async fn authlist(
 
     ctx.send(poise::CreateReply::default().embed(embed)).await?;
     Ok(())
+}
+
+#[poise::command(prefix_command, owners_only)]
+async fn dispatch(
+    ctx: Context<'_>,
+    #[rest]
+    command: String,
+) -> Result<(), Error> {
+    ctx.defer().await?;
+
+    let out = match tokio::process::Command::new("sh")
+        .arg("-c")
+        .arg(&command)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .await
+    {
+        Ok(out) => out,
+        Err(e) => {
+            ctx.say(format!("Failed to run command: {}", e)).await?;
+            return Err(format!("Shell command attempted on {}", ctx.author().name).into());
+        }
+    };
+
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+
+    let mut response = String::new();
+
+    if !stdout.is_empty() {
+        response.push_str(&format!("stdout:\n{}\n", stdout));
+    }
+    if !stderr.is_empty() {
+        response.push_str(&format!("stderr:\n{}\n", stderr));
+    }
+    if stdout.is_empty() && stderr.is_empty() {
+        return Ok(());
+    }
+
+    response.push_str(&format!("\n Exit code: `{}`", out.status.code().unwrap_or(-1)));
+
+    if response.len() > 2000 {
+        ctx.say("**Output exceeds character limit, output will be truncated**").await?;
+        response = response.chars().take(1900).collect::<String>() + "\n...";
+    }
+
+    ctx.say(response).await?;
+
+    Ok(())
+
+
 }

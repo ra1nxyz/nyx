@@ -1,9 +1,9 @@
-use poise::serenity_prelude as serenity;
+use poise::{insert_owners_from_http, serenity_prelude as serenity};
 use sqlx::SqlitePool;
 use std::env;
 use std::sync::Arc;
 use poise::futures_util::lock::Mutex;
-use serenity::all::FullEvent;
+use serenity::all::{FullEvent, UserId};
 
 mod commands;
 mod helpers;
@@ -103,6 +103,13 @@ async fn main() -> Result<(), Error> {
 
     let http_client = Arc::new(serenity::Http::new(&token));
 
+    let owners = std::env::var("OWNERS")
+        .expect("Missing OWNERS")
+        .split(',')
+        .filter_map(|id| id.parse::<u64>().ok())
+        .map(UserId::new)
+        .collect();
+
     let intents =
         serenity::GatewayIntents::GUILD_MESSAGES
             | serenity::GatewayIntents::MESSAGE_CONTENT
@@ -113,6 +120,7 @@ async fn main() -> Result<(), Error> {
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: all_commands(),
+            owners: owners,
             event_handler: |ctx, event, framework, data| {
                 Box::pin(event_handler(ctx, event, framework, data))
             },

@@ -158,7 +158,7 @@ pub async fn whois(
         .thumbnail("https://image.buggirls.xyz/bobrswmTaHAo.webp")
         .field("Version: ", format!("Nyx v{}", version), true)
         .field("Uptime: ", uptime, true)
-        .field("Latency on shard {}: ", latency, true)
+        .field("Latency on shard: ", latency, true)
         .field("Hosted on: ", host, true)
         .footer(serenity::CreateEmbedFooter::new(format!("Shard ID: {}", shard_id)));
     ctx.send(poise::CreateReply::default().embed(embed)).await?;

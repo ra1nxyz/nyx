@@ -19,7 +19,7 @@ pub fn all_commands() -> Vec<poise::Command<Data, Error>> {
         remind(),
         avatar(),
         banner(),
-        about(),
+        whois()
     ]
 }
 
@@ -118,8 +118,8 @@ pub async fn remind(
     Ok(())
 }
 
-#[poise::command(prefix_command, slash_command)]
-pub async fn about(
+#[poise::command(slash_command, prefix_command)]
+pub async fn whois(
     ctx: Context<'_>,
 ) -> Result<(), Error> {
     let version: &str = env!("CARGO_PKG_VERSION");

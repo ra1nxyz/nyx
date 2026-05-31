@@ -18,4 +18,4 @@ PACKAGE_VERSION=$(grep '^version *= *' Cargo.toml | head -n1 | cut -d'"' -f2)
 PACKAGE_PATH=$(pwd)
 WARNING_COUNT=$(grep -c '^warning:' "$LOG" || true)
 
-echo "Compiled $PACKAGE_NAME $PACKAGE_VERSION $PACKAGE_PATH \n Compile time ${COMPILE_TIME}s \n Warnings caught $WARNING_COUNT \n Please restart systemd service for instance $SERVICE"
+printf "Compiled $PACKAGE_NAME $PACKAGE_VERSION $PACKAGE_PATH \n Compile time ${COMPILE_TIME}s \n Warnings caught $WARNING_COUNT \n Please restart systemd service for instance $SERVICE"

@@ -6,7 +6,10 @@ pub(crate) use crate::types::{Context, Data, Error};
 use rand::seq::{IndexedRandom, SliceRandom};
 use rand::rng;
 use serenity::{};
+use serenity::all::shard_id;
+use sysinfo::{RefreshKind, System};
 use crate::commands::moderation::mod_check;
+use crate::helpers::role_colours::is_feature_enabled;
 use crate::structs::time_parse::ParsedDuration;
 
 pub fn all_commands() -> Vec<poise::Command<Data, Error>> {
@@ -113,6 +116,54 @@ pub async fn remind(
 
     Ok(())
 }
+
+#[poise::command(prefix_command, slash_command)]
+pub async fn nabout(
+    ctx: Context<'_>,
+) -> Result<(), Error> {
+    let version: &str = env!("CARGO_PKG_VERSION");
+
+    let uptime_forward = ctx.data().uptime.elapsed();
+    let total_secs = uptime_forward.as_secs();
+
+    let days = total_secs / 86400;
+    let hours = (total_secs % 86400) / 3600;
+    let mins = (total_secs % 3600) / 60;
+    let secs = total_secs % 60;
+
+    let uptime = format!("{:02}d {:02}h {:02}m {:02}s", days, hours, mins, secs);
+
+    let data = ctx.data();
+    let runners = data.shard_manager.runners.lock().await;
+    let shard_id = ctx.serenity_context().shard_id;
+
+    let latency = runners
+        .get(&shard_id)
+        .and_then(|runner| runner.latency)
+        .map(|d| format!("{}ms", d.as_millis()))
+        .unwrap_or_else(|| "N/A".to_string());
+
+    let mut sys = System::new_with_specifics(RefreshKind::everything());
+    sys.refresh_all();
+
+    let os = System::long_os_version().unwrap_or_else(|| "Unknown OS".to_string());
+    let hostname = System::host_name().unwrap_or_else(|| "Unknown host".to_string());
+
+    let host = format!("{os}+{hostname}");
+
+    let embed = serenity::CreateEmbed::default()
+        .title("Instance Info")
+        .color(0x800080)
+        .thumbnail("https://image.buggirls.xyz/bobrswmTaHAo.webp")
+        .field("Version: ", format!("Nyx v{}", version), true)
+        .field("Uptime: ", uptime, true)
+        .field("Latency on shard {}: ", latency, true)
+        .field("Hosted on: ", host, true)
+        .footer(serenity::CreateEmbedFooter::new(format!("Shard ID: {}", shard_id)));
+    ctx.send(poise::CreateReply::default().embed(embed)).await?;
+    Ok(())
+}
+
 /*
 do later i cba
 #[poise::command(slash_command, prefix_command)]

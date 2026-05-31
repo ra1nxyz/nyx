@@ -2,6 +2,7 @@ use poise::{insert_owners_from_http, serenity_prelude as serenity};
 use sqlx::SqlitePool;
 use std::env;
 use std::sync::Arc;
+use std::time::Instant;
 use poise::futures_util::lock::Mutex;
 use serenity::all::{FullEvent, UserId};
 
@@ -97,15 +98,20 @@ async fn event_handler(
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let token = env::var("DISCORD_TOKEN")
-        .expect("Missing DISCORD_TOKEN");
-
-    let db_url = env::var("DATABASE_URL")
-        .expect("Missing DATABASE_URL");
+    let token = env::var("DISCORD_TOKEN")?;
+    let db_url = env::var("DATABASE_URL")?;
 
     let pool = SqlitePool::connect(&db_url).await?;
-
     let http_client = Arc::new(serenity::Http::new(&token));
+
+    let reminders = ReminderStore::new(pool.clone());
+    let starboard = Database::new(&db_url).await?;
+    let auth = Arc::new(AuthDatabase::new(pool.clone()));
+    auth.create_tables().await?;
+    helpers::role_colours::init_role_colour_table(&pool).await?;
+
+    sqlx::query("PRAGMA journal_mode = WAL;").execute(&pool).await?;
+    sqlx::query("PRAGMA synchronous = NORMAL;").execute(&pool).await?;
 
     let owners = std::env::var("OWNERS")
         .expect("Missing OWNERS")
@@ -114,12 +120,14 @@ async fn main() -> Result<(), Error> {
         .map(UserId::new)
         .collect();
 
-    let intents =
-        serenity::GatewayIntents::GUILD_MESSAGES
-            | serenity::GatewayIntents::MESSAGE_CONTENT
-            | serenity::GatewayIntents::GUILD_MEMBERS
-            | serenity::GatewayIntents::GUILD_MESSAGE_REACTIONS
-            | serenity::GatewayIntents::DIRECT_MESSAGES;
+    let intents = serenity::GatewayIntents::GUILD_MESSAGES
+        | serenity::GatewayIntents::MESSAGE_CONTENT
+        | serenity::GatewayIntents::GUILD_MEMBERS
+        | serenity::GatewayIntents::GUILD_MESSAGE_REACTIONS
+        | serenity::GatewayIntents::DIRECT_MESSAGES;
+
+    let shard_manager_holder = Arc::new(tokio::sync::Mutex::new(None));
+    let shard_manager_holder_clone = shard_manager_holder.clone();
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
@@ -148,20 +156,15 @@ async fn main() -> Result<(), Error> {
                     if success {
                         println!("Command {} ran", ctx.command().qualified_name);
                         match ctx {
-                            poise::Context::Prefix(prefix_ctx) =>
-                                {
-                                    if let Err(e) = prefix_ctx.msg.react(&prefix_ctx.serenity_context().http, '✅').await
-                                    {
-                                        eprintln!("Error sending message: {:?}", e);
-                                    }
+                            poise::Context::Prefix(prefix_ctx) => {
+                                if let Err(e) = prefix_ctx.msg.react(&prefix_ctx.serenity_context().http, '✅').await {
+                                    eprintln!("Error sending message: {:?}", e);
                                 }
-                            poise::Context::Application(_) => {
-
                             }
+                            poise::Context::Application(_) => {}
                         }
                     } else {
                         println!("Command {} failed", ctx.command().qualified_name);
-
                     }
                     *data.last_command_success.lock().await = true;
                 })
@@ -171,21 +174,21 @@ async fn main() -> Result<(), Error> {
         .setup(move |_ctx, _ready, _framework| {
             let pool = pool.clone();
             let http_client = Arc::clone(&http_client);
+            let reminders = reminders.clone();
+            let starboard = starboard.clone();
+            let auth = auth.clone();
+            let shard_manager_holder = shard_manager_holder_clone.clone();
 
             Box::pin(async move {
-                let reminders = ReminderStore::new(pool.clone());
-                let starboard = Database::new(&db_url).await?;
-                let auth = Arc::new(AuthDatabase::new(pool.clone()));
-                auth.create_tables().await?;
-                helpers::role_colours::init_role_colour_table(&pool).await?;
-
-                sqlx::query("PRAGMA journal_mode = WAL;").execute(&pool).await?;
-                sqlx::query("PRAGMA synchronous = NORMAL;").execute(&pool).await?;
-
-                // the more i put into the data pool the more concerning
-                // it seems ngl
+                let shard_manager = loop {
+                    if let Some(sm) = shard_manager_holder.lock().await.clone() {
+                        break sm;
+                    }
+                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                };
 
                 let data = Data {
+                    shard_manager,
                     db: pool.clone(),
                     last_command_success: Arc::from(Mutex::new(true)),
                     reminders: reminders.clone(),
@@ -193,10 +196,11 @@ async fn main() -> Result<(), Error> {
                     starboard: starboard.clone(),
                     starboard_lock: Mutex::new(()),
                     auth: auth.clone(),
-
+                    uptime: Instant::now(),
                 };
 
                 let task_data = Data {
+                    shard_manager: data.shard_manager.clone(),
                     db: pool,
                     last_command_success: Arc::new(Default::default()),
                     reminders,
@@ -204,14 +208,12 @@ async fn main() -> Result<(), Error> {
                     starboard,
                     starboard_lock: Mutex::new(()),
                     auth,
+                    uptime: Instant::now(),
                 };
-
 
                 tokio::spawn(async move {
                     reminder_task(Arc::from(task_data)).await;
                 });
-
-
 
                 Ok(data)
             })
@@ -222,7 +224,8 @@ async fn main() -> Result<(), Error> {
         .framework(framework)
         .await?;
 
-
+    let shard_manager = client.shard_manager.clone();
+    *shard_manager_holder.lock().await = Some(shard_manager);
 
     client.start().await?;
 

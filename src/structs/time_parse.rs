@@ -20,6 +20,10 @@ pub enum TimeParseError {
 pub enum RelativeAmount {
     Duration(Duration),
     Months(u32),
+    Combined {
+        months: u32,
+        duration: Duration,
+    },
 }
 
 // weird stuff happening with cargo, force recompile
@@ -44,28 +48,97 @@ impl ParsedWhen {
 
     fn try_parse_relative(input: &str) -> Result<Option<Self>, TimeParseError> {
         // "mo" must be an explicit alternative as it won't fall out of "m" + leftover "o"
-        let re = Regex::new(r"^(\d+)(mo|w|y|s|m|h|d)$").unwrap();
-        let Some(captures) = re.captures(input) else {
-            return Ok(None);
-        };
+        // changed to unanchor to match specific set 1 component, instead catch without anchor and iter
+        let re = Regex::new(r"(\d+)(mo|w|y|s|m|h|d)").unwrap();
 
-        let value: i64 = captures[1].parse()?;
-        if value <= 0 {
-            return Err(TimeParseError::NegativeValue);
+        let mut total_duration = Duration::zero();
+        let mut total_months: u32 = 0;
+        let mut matched_any = false;
+        let mut last_end = 0;
+
+        for captures in re.captures_iter(input) {
+            // prevents things like "2h abc 30m" if tokens are separated by user input
+            let whole = captures.get(0).unwrap();
+
+            if whole.start() != last_end {
+                return Ok(None);
+            }
+
+            matched_any = true;
+            last_end = whole.end();
+
+            let value: i64 = captures[1].parse()?;
+
+            if value <= 0 {
+                return Err(TimeParseError::NegativeValue);
+            }
+
+            match &captures[2] {
+                "s" => {
+                    total_duration = total_duration
+                        .checked_add(&Duration::seconds(value))
+                        .ok_or(TimeParseError::InvalidDate)?;
+                }
+                "m" => {
+                    total_duration = total_duration
+                        .checked_add(&Duration::minutes(value))
+                        .ok_or(TimeParseError::InvalidDate)?;
+                }
+                "h" => {
+                    total_duration = total_duration
+                        .checked_add(&Duration::hours(value))
+                        .ok_or(TimeParseError::InvalidDate)?;
+                }
+                "d" => {
+                    total_duration = total_duration
+                        .checked_add(&Duration::days(value))
+                        .ok_or(TimeParseError::InvalidDate)?;
+                }
+                "w" => {
+                    total_duration = total_duration
+                        .checked_add(&Duration::weeks(value))
+                        .ok_or(TimeParseError::InvalidDate)?;
+                }
+                "mo" => {
+                    total_months = total_months
+                        .checked_add(value as u32)
+                        .ok_or(TimeParseError::InvalidDate)?;
+                }
+                "y" => {
+                    let months = (value as u32)
+                        .checked_mul(12)
+                        .ok_or(TimeParseError::InvalidDate)?;
+
+                    total_months = total_months
+                        .checked_add(months)
+                        .ok_or(TimeParseError::InvalidDate)?;
+                }
+                _ => unreachable!(),
+            }
         }
 
-        let amount = match &captures[2] {
-            "s" => RelativeAmount::Duration(Duration::seconds(value)),
-            "m" => RelativeAmount::Duration(Duration::minutes(value)),
-            "h" => RelativeAmount::Duration(Duration::hours(value)),
-            "d" => RelativeAmount::Duration(Duration::days(value)),
-            "w" => RelativeAmount::Duration(Duration::weeks(value)),
-            "mo" => RelativeAmount::Months(value as u32),
-            "y" => RelativeAmount::Months(value as u32 * 12),
-            _ => unreachable!(),
-        };
+        // Must have matched the entire input.
+        if !matched_any || last_end != input.len() {
+            return Ok(None);
+        }
 
-        Ok(Some(ParsedWhen::Relative(amount)))
+        // If we only have a duration, keep the existing representation.
+        if total_months == 0 {
+            return Ok(Some(ParsedWhen::Relative(
+                RelativeAmount::Duration(total_duration),
+            )));
+        }
+
+        // If we have months/years as well as a duration, we need both.
+        //
+        // This requires extending RelativeAmount to support both calendar
+        // months and a fixed duration.
+        Ok(Some(ParsedWhen::Relative(
+            RelativeAmount::Combined {
+                months: total_months,
+                duration: total_duration,
+            },
+        )))
     }
 
     fn try_parse_absolute(input: &str) -> Result<Option<Self>, TimeParseError> {
@@ -106,14 +179,35 @@ impl ParsedWhen {
 
     pub fn until_datetime(&self) -> Result<DateTime<Utc>, TimeParseError> {
         match self {
-            ParsedWhen::Relative(RelativeAmount::Duration(d)) => Ok(Utc::now() + *d),
-            ParsedWhen::Relative(RelativeAmount::Months(n)) => Utc::now()
-                .checked_add_months(Months::new(*n))
-                .ok_or(TimeParseError::InvalidDate),
+            ParsedWhen::Relative(RelativeAmount::Duration(d)) => {
+                Utc::now()
+                    .checked_add_signed(*d)
+                    .ok_or(TimeParseError::InvalidDate)
+            }
+
+            ParsedWhen::Relative(RelativeAmount::Months(n)) => {
+                Utc::now()
+                    .checked_add_months(Months::new(*n))
+                    .ok_or(TimeParseError::InvalidDate)
+            }
+
+            ParsedWhen::Relative(RelativeAmount::Combined { months, duration }) => {
+                let now = Utc::now();
+
+                let after_months = now
+                    .checked_add_months(Months::new(*months))
+                    .ok_or(TimeParseError::InvalidDate)?;
+
+                after_months
+                    .checked_add_signed(*duration)
+                    .ok_or(TimeParseError::InvalidDate)
+            }
+
             ParsedWhen::Absolute(dt) => {
                 if *dt <= Utc::now() {
                     return Err(TimeParseError::InThePast);
                 }
+
                 Ok(*dt)
             }
         }

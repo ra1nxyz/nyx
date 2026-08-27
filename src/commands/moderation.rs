@@ -1,6 +1,7 @@
+use chrono::Utc;
 use poise::serenity_prelude as serenity;
 use sqlx::{Row, SqlitePool};
-use crate::structs::time_parse::{ParsedDuration, TimeParseError};
+use crate::structs::time_parse::{ParsedWhen, TimeParseError};
 pub(crate) use crate::types::{Context, Data, Error};
 
 pub(crate) const BOT_OWNER_ID: serenity::UserId = serenity::UserId::new(1434739350993768630);
@@ -107,30 +108,53 @@ pub async fn timeout(
     user: serenity::User,
     duration_str: String,
 ) -> Result<(), crate::Error> {
-
-    let parsed_duration = match ParsedDuration::new(&duration_str) {
-        Ok(d) => d,
+    let parsed = match ParsedWhen::new(&duration_str) {
+        Ok(p) => p,
         Err(e) => {
             ctx.say(format!("Duration parse error: {}", e)).await?;
             return Err(format!("Error parsing duration: {}", e).into());
         }
     };
-    const MAX_DURATION: i64 = 28;
 
-    if parsed_duration.duration.num_days() > MAX_DURATION {
-        ctx.say(format!("Timeout duration is over discord maximum ({} days)", MAX_DURATION)).await?;
-        return Err(format!("Maximum timeout duration exceeded in command ({})", MAX_DURATION).into());
+    let until = match parsed.until_datetime() {
+        Ok(dt) => dt,
+        Err(e) => {
+            ctx.say(format!("Duration parse error: {}", e)).await?;
+            return Err(format!("Error parsing duration: {}", e).into());
+        }
+    };
+
+    const MAX_DURATION_DAYS: i64 = 28;
+    let days_from_now = (until - Utc::now()).num_days();
+
+    if days_from_now > MAX_DURATION_DAYS {
+        ctx.say(format!(
+            "Timeout duration is over discord maximum ({} days)",
+            MAX_DURATION_DAYS
+        ))
+            .await?;
+        return Err(format!(
+            "Maximum timeout duration exceeded in command ({})",
+            MAX_DURATION_DAYS
+        )
+            .into());
     }
+
     let guild = ctx.guild_id().unwrap();
     let mut member = guild.member(&ctx.http(), user.id).await?;
 
-    let until = parsed_duration.until_datetime();
-
-    println!("test");
-
     member
-        .edit(ctx.http(), serenity::EditMember::new()
-        .disable_communication_until(until.to_rfc3339()))
+        .edit(
+            ctx.http(),
+            serenity::EditMember::new().disable_communication_until(until.to_rfc3339()),
+        )
+        .await?;
+
+    ctx.say(format!(
+        "Timed out {} until <t:{}:F>",
+        user.name,
+        until.timestamp()
+    ))
         .await?;
 
     Ok(())

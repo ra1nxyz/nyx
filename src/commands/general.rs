@@ -10,7 +10,7 @@ use serenity::all::shard_id;
 use sysinfo::{RefreshKind, System};
 use crate::commands::moderation::mod_check;
 use crate::helpers::role_colours::is_feature_enabled;
-use crate::structs::time_parse::ParsedDuration;
+use crate::structs::time_parse::{ParsedWhen};
 
 pub fn all_commands() -> Vec<poise::Command<Data, Error>> {
     vec![
@@ -79,41 +79,41 @@ pub async fn remind(
     ctx: Context<'_>,
     when: String,
     #[rest]
-    message: String,
+    message: Option<String>,
 ) -> Result<(), Error> {
-    let parsed = ParsedDuration::new(&when)
-        .map_err(|e| format!("Could not parse when: {:?}", e))?;
+    let parsed = ParsedWhen::new(&when)
+        .map_err(|e| format!("Could not parse when: {}", e))?;
 
-    let remind_at = parsed.until_datetime();
+    let remind_at = parsed
+        .until_datetime()
+        .map_err(|e| format!("Could not parse when: {}", e))?;
 
-    let context  = match ctx {
-        poise::Context::Prefix(ctx) => {
-            ctx.msg.link()
-        }
-        _ => {""}.parse()?
+    let message = message.unwrap_or_else(|| "Reminder".to_string());
+
+    let context = match ctx {
+        poise::Context::Prefix(ctx) => ctx.msg.link(),
+        _ => String::new(),
     };
 
     let remind = crate::structs::reminders::Reminder::new(
         ctx.author().id.to_string(),
         remind_at,
-        message.to_string(),
+        message,
         Option::from(context),
     );
 
     let reminder_id = ctx.data().reminders.add_reminder(&remind).await?;
 
-    let until_datetime = || -> chrono::DateTime<Utc> {
-        Utc::now() + parsed.duration
-    };
-
-    fn to_discord_timestamp(dt: DateTime<Utc>) -> String {
-        format!("<t:{}:F>", dt.timestamp())
-    }
-
-    ctx.send(CreateReply::default()
-        .content(format!("Reminder ID #{} set for {}", reminder_id, to_discord_timestamp(until_datetime()))
-        ).reply(true)
-    ).await?;
+    ctx.send(
+        CreateReply::default()
+            .content(format!(
+                "Reminder ID #{} set for <t:{}:F>",
+                reminder_id,
+                remind_at.timestamp()
+            ))
+            .reply(true),
+    )
+        .await?;
 
     Ok(())
 }

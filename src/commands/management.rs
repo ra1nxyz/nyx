@@ -21,6 +21,7 @@ pub fn all_commands() -> Vec<poise::Command<Data, Error>> {
         authremove(),
         authenticate(),
         dispatch(),
+        sync(),
     ]
 }
 
@@ -512,4 +513,66 @@ async fn dispatch(
     Ok(())
 
 
+}
+
+#[poise::command(prefix_command, owners_only)]
+async fn sync(ctx: Context<'_>) -> Result<(), Error> {
+    ctx.defer().await?;
+
+    const BOT_DIR: &str = "/opt/discordbot/bot";
+
+    let git = tokio::process::Command::new("git")
+        .args(["pull"])
+        .current_dir(BOT_DIR)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .await?;
+
+    let git_stdout = String::from_utf8_lossy(&git.stdout);
+    let git_stderr = String::from_utf8_lossy(&git.stderr);
+
+    if !git.status.success() {
+        let output = format!(
+            "**git pull failed**\n```text\n{}{}\n```",
+            git_stdout, git_stderr
+        );
+
+        ctx.say(output.chars().take(1900).collect::<String>())
+            .await?;
+
+        return Ok(());
+    }
+
+    let build = tokio::process::Command::new("cargo")
+        .args(["build", "--release"])
+        .current_dir(BOT_DIR)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .await?;
+
+    let build_stdout = String::from_utf8_lossy(&build.stdout);
+    let build_stderr = String::from_utf8_lossy(&build.stderr);
+
+    if !build.status.success() {
+        let output = format!(
+            "**cargo build failed**\n```text\n{}{}\n```",
+            build_stdout, build_stderr
+        );
+
+        ctx.say(output.chars().take(1900).collect::<String>())
+            .await?;
+
+        return Ok(());
+    }
+
+    ctx.say("Build successful. Restarting service").await?;
+
+    tokio::process::Command::new("systemctl")
+        .args(["restart", "discordbot"])
+        .status()
+        .await?;
+
+    Ok(())
 }

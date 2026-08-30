@@ -18,6 +18,8 @@ pub async fn inspectimage(
     image: Option<serenity::all::Attachment>,
     url: Option<String>,
 ) -> Result<(), Error> {
+    ctx.defer().await?; // defer to close short time window for response
+
     let image_url = if let Some(image) = &image {
         image.url.clone()
     } else if let Some(url) = &url {

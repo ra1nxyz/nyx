@@ -1,14 +1,23 @@
 use exif::Reader;
-use image::ImageFormat;
 use std::io::Cursor;
+
+use image::{ColorType, ImageFormat};
+
+use super::metadata::{extract_exif, ExifInfo};
+
 
 pub struct ImageInfo {
     pub format: ImageFormat,
     pub size: usize,
+
     pub width: u32,
     pub height: u32,
     pub megapixels: f64,
-    pub exif: Option<String>,
+    pub aspect_ratio: f64,
+
+    pub color_type: ColorType,
+
+    pub exif: Option<ExifInfo>,
 }
 
 pub fn analyze(bytes: &[u8]) -> Result<ImageInfo, Box<dyn std::error::Error + Send + Sync>> {
@@ -19,26 +28,15 @@ pub fn analyze(bytes: &[u8]) -> Result<ImageInfo, Box<dyn std::error::Error + Se
 
     let megapixels = (width as f64 * height as f64) / 1_000_000.0;
 
+    let aspect_ratio = width as f64 / height as f64;
+
     let format = image::guess_format(bytes)?;
+
+    let color_type = img.color();
 
     let mut cursor = Cursor::new(bytes);
 
-    let exif = Reader::new()
-        .read_from_container(&mut cursor)
-        .ok()
-        .map(|exif| {
-            exif.fields()
-                .map(|field| {
-                    format!(
-                        "**{}**: {}",
-                        field.tag,
-                        field.display_value().with_unit(&exif)
-                    )
-                })
-                .collect::<Vec<_>>()
-                .join("\n")
-        })
-        .filter(|text| !text.is_empty());
+    let exif = extract_exif(bytes);
 
     Ok(ImageInfo {
         format,
@@ -46,6 +44,8 @@ pub fn analyze(bytes: &[u8]) -> Result<ImageInfo, Box<dyn std::error::Error + Se
         width,
         height,
         megapixels,
+        aspect_ratio,
+        color_type,
         exif,
     })
 }

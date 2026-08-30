@@ -179,7 +179,10 @@ async fn main() -> Result<(), Error> {
             let auth = auth.clone();
             let shard_manager_holder = shard_manager_holder_clone.clone();
 
+
+
             Box::pin(async move {
+                poise::builtins::register_globally(_ctx, &_framework.options().commands).await?;
                 let shard_manager = loop {
                     if let Some(sm) = shard_manager_holder.lock().await.clone() {
                         break sm;

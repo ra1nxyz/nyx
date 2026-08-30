@@ -26,7 +26,6 @@ pub enum RelativeAmount {
     },
 }
 
-// weird stuff happening with cargo, force recompile
 pub enum ParsedWhen {
     Relative(RelativeAmount),
     Absolute(DateTime<Utc>),
@@ -117,22 +116,20 @@ impl ParsedWhen {
             }
         }
 
-        // Must have matched the entire input.
+        // Must have matched the entire input
         if !matched_any || last_end != input.len() {
             return Ok(None);
         }
 
-        // If we only have a duration, keep the existing representation.
+        // If we only have a duration, keep the existing representation
         if total_months == 0 {
             return Ok(Some(ParsedWhen::Relative(
                 RelativeAmount::Duration(total_duration),
             )));
         }
 
-        // If we have months/years as well as a duration, we need both.
-        //
         // This requires extending RelativeAmount to support both calendar
-        // months and a fixed duration.
+        // months and a fixed duration
         Ok(Some(ParsedWhen::Relative(
             RelativeAmount::Combined {
                 months: total_months,

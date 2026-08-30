@@ -74,11 +74,11 @@ pub async fn banner(
     Ok(())
 }
 
+// remove rest to allow message option for slash command
 #[poise::command(slash_command, prefix_command, dm_only = false)]
 pub async fn remind(
     ctx: Context<'_>,
     when: String,
-    #[rest]
     message: Option<String>,
 ) -> Result<(), Error> {
     let parsed = ParsedWhen::new(&when)

@@ -3,6 +3,7 @@ pub mod moderation;
 mod management;
 
 mod fun;
+mod tools;
 
 use crate::types::{Context, Data, Error};
 use poise::Command;

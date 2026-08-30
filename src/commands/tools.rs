@@ -41,41 +41,10 @@ pub async fn inspectimage(
         .field("Aspect Ratio", format!("`{:.2}:1`", info.aspect_ratio), true)
         .field("Colour", format!("`{:?}`", info.color_type), true);
 
-    if let Some(exif) = info.exif {  // i need to fix this lmao its gross
-        let mut exif_text = String::new();
-
-        if let Some(make) = exif.make {
-            exif_text.push_str(&format!("**Camera:** {}\n", make));
-        }
-        if let Some(model) = exif.model {
-            exif_text.push_str(&format!("**Model:** {}\n", model));
-        }
-        if let Some(lens) = exif.lens {
-            exif_text.push_str(&format!("**Lens:** {}\n", lens));
-        }
-        if let Some(date) = exif.date_time {
-            exif_text.push_str(&format!("**Date:** {}\n", date));
-        }
-        if let Some(iso) = exif.iso {
-            exif_text.push_str(&format!("**ISO:** {}\n", iso));
-        }
-        if let Some(exposure) = exif.exposure_time {
-            exif_text.push_str(&format!("**Exposure:** {}\n", exposure));
-        }
-        if let Some(aperture) = exif.f_number {
-            exif_text.push_str(&format!("**Aperture:** {}\n", aperture));
-        }
-        if let Some(focal_length) = exif.focal_length {
-            exif_text.push_str(&format!("**Focal length:** {}\n", focal_length));
-        }
-        if let Some(software) = exif.software {
-            exif_text.push_str(&format!("**Software:** {}\n", software));
-        }
-        if !exif_text.is_empty() {
-            embed = embed.field("EXIF", exif_text, false);
-        }
+    if let Some(exif) = info.exif {
+        embed = embed.field("EXIF Metadata", exif.to_text(), false);
     } else {
-        embed = embed.field("EXIF", "No EXIF metadata found.", false);
+        embed = embed.field("EXIF", "No EXIF metadata found", false);
     }
 
     ctx.send(poise::CreateReply::default().embed(embed)).await?;

@@ -177,7 +177,8 @@ async fn nikos_doomsday(
     let embed = serenity::CreateEmbed::default()
         .image("https://cdn.discordapp.com/attachments/1467668605146763420/1543766108115312710/image.png?ex=6a960fb9&is=6a94be39&hm=3e0eab15e725ef3ddd6f2f1017b5229f6243cb3f07db50b6b31702e85504b233&")
         .title("Nikos doomsday")
-        .description("Nikos has until <t:1789654740:F> to reach 5 digit before he is declared a bum");
+        .description("Nikos has until <t:1789654740:F> to reach 5 digit before he is declared a bum")
+        .field("<t:1789654740:R> Days left.", ":alarm_clock:", false);
 
     ctx.send(
         poise::CreateReply::default()

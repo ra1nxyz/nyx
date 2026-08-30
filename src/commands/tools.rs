@@ -29,26 +29,33 @@ pub async fn inspectimage(
 
     let mp = (width as f64 * height as f64) / 1000000.0;
     let img_type = image::guess_format(&bytes)?;
-    let size = bytes.len() / 1000000; // is right, change for dynamic tho after
+    let size = bytes.len();
 
     let mut cursor = std::io::Cursor::new(bytes.as_ref());
     let exif = Reader::new().read_from_container(&mut cursor).ok();
 
-    let embed = serenity::CreateEmbed::default()
+    let mut embed = serenity::CreateEmbed::default()
         .title("Image Information")
-        .color(0x00FF00)
+        .color(0x5865F2)
         .field("Image Format", format!("`{:?}`", img_type.extensions_str()), false)
-        .field("Size", format!("`{:?}` MB", size), false)
+        .field("Size", format!("`{:.2}` MB", size as f64 / 1000000.0), false)
         .field("Resolution", format!("{} x {}", width, height), false)
-        .title("test");
+        .field("Megapixels", format!("{:.2} MP", mp), false);
 
-    //if let Ok(exif) = exif {
-    //    for field in exif.fields() {
-    //
-    //    }
+    if let Some(exif) = exif {
+        let exif_text = exif.fields().map(|field| {
+            format!("**{}**: {}", field.tag, field.display_value().with_unit(&exif)
+            )
+        })
+        .collect::<Vec<_>>().join("\n");
+
+        if !exif_text.is_empty() {
+            embed = embed.field("EXIF", exif_text, false);
+        }
+    }
+
 
     //test run
-
     ctx.send(poise::CreateReply::default().embed(embed)).await?;
     Ok(())
 }

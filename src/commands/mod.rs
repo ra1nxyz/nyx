@@ -15,6 +15,7 @@ pub fn all_commands() -> Vec<Command<Data, Error>> {
     commands.extend(general::all_commands());
     commands.extend(management::all_commands());
     commands.extend(fun::all_commands());
+    commands.extend(tools::all_commands());
 
 
 

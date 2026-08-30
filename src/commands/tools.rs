@@ -2,6 +2,14 @@ use crate::serenity;
 pub(crate) use crate::types::{Context, Data, Error};
 use exif::{In, Reader, Tag};
 use reqwest::{get};
+use crate::commands::fun::{rcstatus, rolecolours, roleset};
+
+pub fn all_commands() -> Vec<poise::Command<Data, Error>> {
+    vec![
+        inspectimage(),
+        // add more here
+    ]
+}
 
 #[poise::command(slash_command)]
 pub async fn inspectimage(

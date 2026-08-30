@@ -544,6 +544,8 @@ async fn sync(ctx: Context<'_>) -> Result<(), Error> {
         return Ok(());
     }
 
+    ctx.say("Branch settled, starting build with args `--release`").await?;
+
     let build = tokio::process::Command::new("cargo")
         .args(["build", "--release"])
         .current_dir(BOT_DIR)
@@ -554,7 +556,6 @@ async fn sync(ctx: Context<'_>) -> Result<(), Error> {
 
     let build_stdout = String::from_utf8_lossy(&build.stdout);
     let build_stderr = String::from_utf8_lossy(&build.stderr);
-
     if !build.status.success() {
         let output = format!(
             "**cargo build failed**\n```text\n{}{}\n```",

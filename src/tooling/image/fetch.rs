@@ -1,14 +1,33 @@
 use reqwest::{Client, Url};
 use std::time::Duration;
+use thiserror::Error;
 
 const MAX_IMAGE_SIZE: usize = 150 * 1024 * 1024; // 150 MB
 
-pub async fn from_url(url: &str) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {
+#[derive(Debug, Error)]
+pub enum FetchError {
+    #[error("invalid URL")]
+    InvalidUrl(#[from] url::ParseError),
+
+    #[error("URL must use hypertext")]
+    InvalidScheme,
+
+    #[error("image is too large (maximum size is 150 MB)")]
+    TooLarge,
+
+    #[error("request timed out")]
+    Timeout,
+
+    #[error("HTTP request failed")]
+    Request(#[from] reqwest::Error),
+}
+
+pub async fn from_url(url: &str) -> Result<Vec<u8>, FetchError> {
     let url = Url::parse(url)?;
 
     match url.scheme() {
         "http" | "https" => {}
-        _ => return Err("URL provided doesnt use hypertext".into()),
+        _ => return Err(FetchError::InvalidScheme),
     }
 
     let client = Client::builder()
@@ -16,26 +35,26 @@ pub async fn from_url(url: &str) -> Result<Vec<u8>, Box<dyn std::error::Error + 
         .timeout(Duration::from_secs(30))
         .build()?;
 
-    let response = client.get(url).send().await?.error_for_status()?;
-
-    if let Some(content_type) = response.headers().get(reqwest::header::CONTENT_TYPE) {
-        let content_type = content_type.to_str()?.split(';').next().unwrap_or("");
-
-        if !content_type.starts_with("image/") {
-            return Err(format!("URL does not point to an image: {}", content_type).into());
+    let response = match client.get(url).send().await {
+        Ok(response) => response,
+        Err(error) if error.is_timeout() => {
+            return Err(FetchError::Timeout);
         }
-    }
+        Err(error) => return Err(FetchError::Request(error)),
+    };
+
+    let response = response.error_for_status()?;
 
     if let Some(length) = response.content_length() {
         if length > MAX_IMAGE_SIZE as u64 {
-            return Err(format!("Image is over maximum size of {}MB", MAX_IMAGE_SIZE/1024/1024).into());
+            return Err(FetchError::TooLarge);
         }
     }
 
     let bytes = response.bytes().await?;
 
     if bytes.len() > MAX_IMAGE_SIZE {
-        return Err(format!("Image is over maximum size of {}MB", MAX_IMAGE_SIZE/1024/1024).into());
+        return Err(FetchError::TooLarge);
     }
 
     Ok(bytes.to_vec())

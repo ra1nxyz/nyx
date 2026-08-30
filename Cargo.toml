@@ -18,3 +18,4 @@ sysinfo = "0.30"
 kamadak-exif = "0.6"
 reqwest = { version = "0.13", features = ["rustls"]}
 image = "0.25.10"
+url = "2.5.8"

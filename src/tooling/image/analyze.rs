@@ -1,9 +1,20 @@
 use exif::Reader;
 use std::io::Cursor;
-
+use thiserror::Error;
 use image::{ColorType, ImageFormat};
 
 use super::metadata::{extract_exif, ExifInfo};
+
+
+
+#[derive(Debug, Error)]
+pub enum AnalyzeError {
+    #[error("invalid or unsupported image")]
+    InvalidImage(#[from] image::ImageError),
+
+    #[error("unable to determine image format")]
+    UnknownFormat,
+}
 
 
 pub struct ImageInfo {
@@ -20,7 +31,7 @@ pub struct ImageInfo {
     pub exif: Option<ExifInfo>,
 }
 
-pub fn analyze(bytes: &[u8]) -> Result<ImageInfo, Box<dyn std::error::Error + Send + Sync>> {
+pub fn analyze(bytes: &[u8]) -> Result<ImageInfo, AnalyzeError> {
     let img = image::load_from_memory(bytes)?;
 
     let width = img.width();
@@ -30,7 +41,8 @@ pub fn analyze(bytes: &[u8]) -> Result<ImageInfo, Box<dyn std::error::Error + Se
 
     let aspect_ratio = width as f64 / height as f64;
 
-    let format = image::guess_format(bytes)?;
+    let format = image::guess_format(bytes)
+        .map_err(|_| AnalyzeError::UnknownFormat)?;
 
     let color_type = img.color();
 

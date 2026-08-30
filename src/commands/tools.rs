@@ -4,6 +4,7 @@ use exif::{In, Reader, Tag};
 use reqwest::{get};
 use crate::commands::fun::{rcstatus, rolecolours, roleset};
 use crate::tooling::image::{analyze, fetch};
+use crate::tooling::image::fetch::FetchError;
 
 pub fn all_commands() -> Vec<poise::Command<Data, Error>> {
     vec![
@@ -26,9 +27,41 @@ pub async fn inspectimage(
         url.clone()
     } else { return Err("Provide image/URL for inspection".into()) };
 
-    let bytes = fetch::from_url(&image_url).await?;
+    let bytes = match fetch::from_url(&image_url).await {
+        Ok(bytes) => bytes,
 
-    let info = analyze(&bytes)?;
+        Err(error) => {
+            let message = match error {
+                fetch::FetchError::InvalidUrl(_) => {
+                    "The URL provided is invalid"
+                }
+                fetch::FetchError::InvalidScheme => {
+                    "The URL provided is not hypertext"
+                }
+                fetch::FetchError::TooLarge => {
+                    "The image provided is over the 150MB maximum"
+                }
+                fetch::FetchError::Timeout => {
+                    "The remote server took too long to respond"
+                }
+                fetch::FetchError::Request(_) => {
+                    "Image download for inspection failed"
+                }
+            };
+            ctx.send(poise::CreateReply::default().content(message)).await?;
+
+            return Ok(());
+        }
+    };
+
+    let info = match analyze(&bytes) {
+        Ok(info) => info,
+        Err(error) => {
+            ctx.send(poise::CreateReply::default()
+                .content("File is not a supported image")).await?;
+            return Ok(());
+        }
+    };
 
     let mut embed = serenity::CreateEmbed::default()
         .title("Image Information")

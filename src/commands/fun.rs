@@ -194,6 +194,7 @@ pub fn all_commands() -> Vec<poise::Command<Data, Error>> {
         rolecolours(),
         roleset(),
         rcstatus(),
+        nikos_doomsday(),
         // add more here
     ]
 }

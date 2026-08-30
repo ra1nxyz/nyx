@@ -11,6 +11,8 @@ mod helpers;
 
 mod types;
 mod structs;
+mod tooling;
+
 use types::{Context, Data, Error};
 
 use crate::commands::all_commands;

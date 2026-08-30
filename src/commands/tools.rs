@@ -29,16 +29,16 @@ pub async fn inspectimage(
 
     let mp = (width as f64 * height as f64) / 1000000.0;
     let img_type = image::guess_format(&bytes)?;
-    let size = size_of_val(&bytes) / 1000000; // cant be right
+    let size = bytes.len() / 1000000; // is right, change for dynamic tho after
 
     let mut cursor = std::io::Cursor::new(bytes.as_ref());
-    let exif = Reader::new().read_from_container(&mut cursor)?;
+    let exif = Reader::new().read_from_container(&mut cursor).ok();
 
     let embed = serenity::CreateEmbed::default()
         .title("Image Information")
         .color(0x00FF00)
         .field("Image Format", format!("`{:?}`", img_type.extensions_str()), false)
-        .field("Size", format!("`{:?}`", size), false)
+        .field("Size", format!("`{:?}` MB", size), false)
         .field("Resolution", format!("{} x {}", width, height), false)
         .title("test");
 

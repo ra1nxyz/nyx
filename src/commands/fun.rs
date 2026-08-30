@@ -170,6 +170,22 @@ pub async fn roleset(
 
 }
 
+#[poise::command(slash_command)]
+async fn nikos_doomsday(
+    ctx: Context<'_>,
+) -> Result<(), Error> {
+    let embed = serenity::CreateEmbed::default()
+        .title("Nikos doomsday")
+        .description("Nikos has until <t:1789654740:F> to reach 5 digit before he is declared a bum");
+
+    ctx.send(
+        poise::CreateReply::default()
+            .embed(embed),
+    ).await?;
+
+    Ok(())
+}
+
 
 pub fn all_commands() -> Vec<poise::Command<Data, Error>> {
     vec![

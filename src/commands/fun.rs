@@ -188,6 +188,26 @@ async fn nikos_doomsday(
     Ok(())
 }
 
+#[poise::command(slash_command)]
+pub async fn osutest(
+    ctx: Context<'_>,
+) -> Result<(), Error> {
+    let user = ctx.data()
+        .osu
+        .get_user("38173968")
+        .await?;
+
+    ctx.say(format!(
+        "{} - #{} - {:.2}pp",
+        user.username,
+        user.statistics.global_rank.unwrap_or(0),
+        user.statistics.pp,
+    ))
+        .await?;
+
+    Ok(())
+}
+
 
 pub fn all_commands() -> Vec<poise::Command<Data, Error>> {
     vec![

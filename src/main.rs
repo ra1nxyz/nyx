@@ -28,7 +28,7 @@ use crate::helpers::starboard_manager::{
     handle_reaction_remove,
     handle_reaction_remove_all
 };
-
+use crate::tooling::osu::api::OsuClient;
 // split this whole file later down the line
 
 async fn on_error(error: poise::FrameworkError<'_, Data, Error>)
@@ -102,6 +102,13 @@ async fn event_handler(
 async fn main() -> Result<(), Error> {
     let token = env::var("DISCORD_TOKEN")?;
     let db_url = env::var("DATABASE_URL")?;
+    let client_id: u32 = env::var("OSU_CLIENT_ID")?.parse()?;
+    let client_oauth = env::var("OSU_CLIENT_OAUTH")?;
+
+    let osu = OsuClient::new(
+        client_id,
+        &client_oauth,
+    ).await?;
 
     let pool = SqlitePool::connect(&db_url).await?;
     let http_client = Arc::new(serenity::Http::new(&token));
@@ -202,6 +209,7 @@ async fn main() -> Result<(), Error> {
                     starboard_lock: Mutex::new(()),
                     auth: auth.clone(),
                     uptime: Instant::now(),
+                    osu,
                 };
 
                 let task_data = Data {
@@ -214,6 +222,10 @@ async fn main() -> Result<(), Error> {
                     starboard_lock: Mutex::new(()),
                     auth,
                     uptime: Instant::now(),
+                    osu: OsuClient::new( //lazy
+                        client_id,
+                        &client_oauth,
+                    ).await?
                 };
 
                 tokio::spawn(async move {

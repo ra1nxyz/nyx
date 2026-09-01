@@ -5,6 +5,8 @@ use sqlx::SqlitePool;
 use std::time::Instant;
 use serenity::all::ShardManager;
 
+use crate::tooling::osu::api::OsuClient;
+
 #[derive(Debug, sqlx::FromRow)]
 pub struct GuildConfig {
     pub guild_id: String,
@@ -29,6 +31,7 @@ pub struct Data {
     pub http_client: Arc<serenity::Http>,
     pub auth: Arc<crate::helpers::auth::AuthDatabase>,
     pub uptime: Instant,
+    pub osu: OsuClient,
 }
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;

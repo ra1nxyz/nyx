@@ -216,6 +216,7 @@ pub fn all_commands() -> Vec<poise::Command<Data, Error>> {
         roleset(),
         rcstatus(),
         nikos_doomsday(),
+        osutest(), // i forgot to register again
         // add more here
     ]
 }

@@ -13,8 +13,9 @@ struct OAuthResponse {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct OsuUser {
+pub struct OsuUser {  // these need to be moved over to /structs/, or maybe keep separate as part of the toolings sub project idk
     pub id: u64,
+    pub avatar_url: String,
     pub username: String,
     pub last_visit: Option<String>,
     pub statistics: OsuStatistics,
@@ -40,7 +41,7 @@ impl OsuClient {
 
         let response = client
             .post(OSU_OAUTH)
-            .json(&serde_json::json!({
+            .json(&serde_json::json!({ // swap out json for sql if i care to keep this going for further than a bit, not rlly tho
                 "client_id": client_id,
                 "client_secret": client_secret,
                 "grant_type": "client_credentials",

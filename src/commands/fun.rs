@@ -1,10 +1,12 @@
 pub(crate) use crate::types::{Context, Data, Error};
 use poise::serenity_prelude as serenity;
 use serenity::all::Mentionable;
+use serenity::builder::CreateEmbedFooter;
 use crate::commands::general::{choose, remind, say};
 use crate::helpers::role_colours::{is_feature_enabled, set_feature_enabled};
 
 use crate::commands::moderation::{mod_check};
+use crate::tooling::osu::snapshot;
 
 #[poise::command(prefix_command, slash_command, guild_only)]
 async fn sbstatus(
@@ -189,21 +191,95 @@ async fn nikos_doomsday(
 }
 
 #[poise::command(slash_command)]
-pub async fn osutest(
+pub async fn nikos_rank_counter(
     ctx: Context<'_>,
 ) -> Result<(), Error> {
+    ctx.defer().await?;
+
     let user = ctx.data()
         .osu
-        .get_user("38173968")
+        .get_user("36158758")
         .await?;
 
-    ctx.say(format!(
-        "{} - #{} - {:.2}pp",
-        user.username,
-        user.statistics.global_rank.unwrap_or(0),
-        user.statistics.pp,
-    ))
-        .await?;
+    let previous = snapshot::load()?;
+
+    let current_rank = user.statistics.global_rank;
+    let current_pp = user.statistics.pp;
+
+    let rank_change = previous.as_ref().and_then(|old| {
+        match (old.global_rank, current_rank) {
+            (Some(old), Some(new)) => Some(old as i32 - new as i32),
+            _ => None,
+        }
+    });
+
+    let pp_change = previous.as_ref().map(|old| {
+        current_pp - old.pp
+    });
+
+    let rank_text = match rank_change {
+        Some(change) if change > 0 => {
+            format!("#{}\n**+{} ranks**", current_rank.unwrap(), change)
+        }
+
+        Some(change) if change < 0 => {
+            format!("#{}\n**{} ranks**", current_rank.unwrap(), change)
+        }
+
+        Some(_) => {
+            format!("#{}\n**No change**", current_rank.unwrap())
+        }
+
+        None => {
+            format!("#{}", current_rank.unwrap())
+        }
+    };
+
+    let pp_text = match pp_change {
+        Some(change) if change > 0.0 => {
+            format!("{:.2}pp  `+{:.2}pp`", current_pp, change)
+        }
+
+        Some(change) => {
+            format!("{:.2}pp  `{:.2}pp`", current_pp, change)
+        }
+
+        None => {
+            format!("{:.2}pp", current_pp)
+        }
+    };
+
+    let mut embed = serenity::CreateEmbed::default()
+        .title("osu! Rank Progress")
+        .color(0x5865F2)
+        .thumbnail(&user.avatar_url)
+        .field("Player", &user.username, true)
+        .field("Global Rank", rank_text, true)
+        .field("Performance", pp_text, true)
+        .footer(CreateEmbedFooter::new("Doomsday <t:1789654740:R>"));
+
+    if let Some(previous) = &previous {
+        embed = embed.field(
+            "Last Seen",
+            previous.last_visit.as_deref().unwrap_or("Unknown"),
+            false,
+        );
+    }
+
+    // Save current state
+    snapshot::save(&snapshot::RankSnapshot {
+        user_id: user.id,
+        username: user.username.clone(),
+        global_rank: current_rank,
+        pp: current_pp,
+        last_visit: user.last_visit.clone(),
+        checked_at: chrono::Utc::now().to_rfc3339(),
+    })?;
+
+    ctx.send(
+        poise::CreateReply::default()
+            .embed(embed),
+    ).await?;
 
     Ok(())
 }
@@ -216,7 +292,7 @@ pub fn all_commands() -> Vec<poise::Command<Data, Error>> {
         roleset(),
         rcstatus(),
         nikos_doomsday(),
-        osutest(), // i forgot to register again
+        nikos_rank_counter(), // i forgot to register again
         // add more here
     ]
 }

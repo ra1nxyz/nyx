@@ -1,2 +1,2 @@
 pub(crate) mod api;
-mod snapshot;
+pub(crate) mod snapshot;

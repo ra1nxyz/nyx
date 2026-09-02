@@ -206,12 +206,12 @@ pub async fn nikos_rank_counter(
     let current_rank = user.statistics.global_rank;
     let current_pp = user.statistics.pp;
 
-    let rank_change = previous.as_ref().and_then(|old| {
-        match (old.global_rank, current_rank) {
-            (Some(old), Some(new)) => Some(old as i32 - new as i32),
-            _ => None,
+    let rank_change = match (previous.as_ref(), current_rank) {
+        (Some(old), Some(new)) => {
+            old.global_rank.map(|old| old as i64 - new as i64)
         }
-    });
+        _ => None,
+    };
 
     let pp_change = previous.as_ref().map(|old| {
         current_pp - old.pp
@@ -256,7 +256,7 @@ pub async fn nikos_rank_counter(
         .field("Player", &user.username, true)
         .field("Global Rank", rank_text, true)
         .field("Performance", pp_text, true)
-        .footer(CreateEmbedFooter::new("Doomsday <t:1789654740:R>"));
+        .field("Doomsday <t:1789654740:R>", "", true);
 
     if let Some(previous) = &previous {
         embed = embed.field(

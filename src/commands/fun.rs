@@ -1,8 +1,6 @@
 pub(crate) use crate::types::{Context, Data, Error};
 use poise::serenity_prelude as serenity;
 use serenity::all::Mentionable;
-use serenity::builder::CreateEmbedFooter;
-use crate::commands::general::{choose, remind, say};
 use crate::helpers::role_colours::{is_feature_enabled, set_feature_enabled};
 
 use crate::commands::moderation::{mod_check};
@@ -179,6 +177,7 @@ async fn nikos_doomsday(
     let embed = serenity::CreateEmbed::default()
         .image("https://cdn.discordapp.com/attachments/1467668605146763420/1543766108115312710/image.png?ex=6a960fb9&is=6a94be39&hm=3e0eab15e725ef3ddd6f2f1017b5229f6243cb3f07db50b6b31702e85504b233&")
         .title("Nikos doomsday")
+        .color(0x5865F2)
         .description("Nikos has until <t:1789654740:F> to reach 5 digit before he is declared a bum")
         .field("Doomsday: <t:1789654740:R>", ":alarm_clock:", true);
 

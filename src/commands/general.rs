@@ -16,7 +16,8 @@ pub fn all_commands() -> Vec<poise::Command<Data, Error>> {
     vec![
         say(),
         choose(),
-        remind(),
+        remind_prefix(),
+        remind_slash(),
         avatar(),
         banner(),
         whois()
@@ -74,9 +75,8 @@ pub async fn banner(
     Ok(())
 }
 
-// remove rest to allow message option for slash command
-#[poise::command(slash_command, prefix_command, dm_only = false)]
-pub async fn remind(
+
+async fn remind_impl(
     ctx: Context<'_>,
     when: String,
     message: Option<String>,
@@ -99,7 +99,7 @@ pub async fn remind(
         ctx.author().id.to_string(),
         remind_at,
         message,
-        Option::from(context),
+        Some(context),
     );
 
     let reminder_id = ctx.data().reminders.add_reminder(&remind).await?;
@@ -116,6 +116,25 @@ pub async fn remind(
         .await?;
 
     Ok(())
+}
+
+#[poise::command(prefix_command, dm_only = false, rename = "remind")]
+pub async fn remind_prefix(
+    ctx: Context<'_>,
+    when: String,
+    #[rest]
+    message: Option<String>,
+) -> Result<(), Error> {
+    remind_impl(ctx, when, message).await
+}
+
+#[poise::command(slash_command, dm_only = false, rename = "remind")]
+pub async fn remind_slash(
+    ctx: Context<'_>,
+    when: String,
+    message: Option<String>,
+) -> Result<(), Error> {
+    remind_impl(ctx, when, message).await
 }
 
 #[poise::command(slash_command, prefix_command)]
